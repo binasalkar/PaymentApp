@@ -20,6 +20,7 @@ namespace PaymentApp.Models.Payments
 
         [Required]
         [Display(Name = "Account Name")]
+        [RegularExpression(@"^[a-zA-Z '.-]*$", ErrorMessage = "The Account Name shall have only alphabets")]
         public string AccountName { get; set; }
 
         [Required]
