@@ -14,7 +14,6 @@ namespace PaymentApp.Controllers
     {
         private readonly ILogger<PaymentsController> _logger;
         private readonly IConfiguration _configuration;
-        private const string filePath = @"C:\Log.txt";
 
         public PaymentsController(ILogger<PaymentsController> logger, IConfiguration configuration)
         {
@@ -37,30 +36,54 @@ namespace PaymentApp.Controllers
         [HttpPost]
         public IActionResult Create(PaymentInfo model)
         {
-            if(ModelState.IsValid)
+            if (ModelState.IsValid)
             {
                 var paymentFilePath = _configuration["PaymentInfoPath"];
-                if(!System.IO.Directory.Exists(Path.GetDirectoryName(paymentFilePath)))
+                if(string.IsNullOrEmpty(paymentFilePath))
                 {
-                    _logger.LogError($"FilePath {paymentFilePath} not found. The payment of {model.Amount} AUD from {model.AccountName} with AccountNumber {model.BSBNumber}/{model.AccountNumber} and Reference - {model.Reference} has ended in errors");
-                    ViewBag.Message = $"The payment of {model.Amount} AUD from {model.AccountName} has ended in errors";
+                    _logger.LogError($"Payment File Path not set. Transaction Details - Account Name: {model.AccountName}, Amount: {model.Amount} AUD,  Account Number: {model.BSBNumber}/{model.AccountNumber}, Reference: {model.Reference}");
+                    ViewBag.Message = $"The trasaction initiated by {model.AccountName} has ended in errors.";
                     return View(model);
-                }
-                using (StreamWriter writer = new StreamWriter(paymentFilePath, true))
-                {
-                    writer.WriteLine($"The below Payment is received successfully at {DateTime.Now}");
-                    writer.WriteLine($"Account Name : {model.AccountName}");
-                    writer.WriteLine($"Account Number : {model.AccountNumber}");
-                    writer.WriteLine($"BSB Number : {model.BSBNumber}");
-                    writer.WriteLine($"Amount : {model.Amount}$");
-                    writer.WriteLine($"Reference : {model.Reference}$");
-                    writer.WriteLine();
-                }
 
+                }
+                try
+                {
+                    if (!System.IO.Directory.Exists(Path.GetDirectoryName(paymentFilePath)))
+                    {
+                        _logger.LogError($"FilePath {paymentFilePath} not found. Transaction Details - Account Name: {model.AccountName}, Amount: {model.Amount} AUD,  Account Number: {model.BSBNumber}/{model.AccountNumber}, Reference: {model.Reference}");
+                        ViewBag.Message = $"The trasaction initiated by {model.AccountName} has ended in errors.";
+                        return View(model);
+                    }
+                    using (StreamWriter writer = new StreamWriter(paymentFilePath, true))
+                    {
+                        writer.WriteLine($"The below transaction was done successfully at {DateTime.Now}");
+                        writer.WriteLine($"Account Name : {model.AccountName}");
+                        writer.WriteLine($"Account Number : {model.AccountNumber}");
+                        writer.WriteLine($"BSB Number : {model.BSBNumber}");
+                        writer.WriteLine($"Amount : {model.Amount}$");
+                        writer.WriteLine($"Reference : {model.Reference}");
+                        writer.WriteLine($"Description : {model.Description}");
+                        writer.WriteLine();
+                    }
+
+
+                    _logger.LogInformation($"The trasaction has been completed successfully. Transaction Details - Account Name: {model.AccountName}, Amount: {model.Amount} AUD,  Account Number: {model.BSBNumber}/{model.AccountNumber}, Reference: {model.Reference}");
+                    ViewBag.Message = $"The trasaction initiated by  {model.AccountName} has been completed successfully.";
+                    return View(new PaymentInfo());
+                }
+                
+                catch (Exception ex)
+                {
+                    _logger.LogInformation($"The exception has occured while processing the trasaction. Transaction Details - Account Name: {model.AccountName}, Amount: {model.Amount} AUD,  Account Number: {model.BSBNumber}/{model.AccountNumber}, Reference: {model.Reference}. Exception Details - {ex.ToString()}");
+                    ViewBag.Message = $"The transaction initiated by {model.AccountName} has ended in errors.";
+                    return View(model);
+
+                }
             }
-            _logger.LogInformation($"The payment of {model.Amount} AUD has been received successfully from {model.AccountName} with AccountNumber {model.BSBNumber}/{model.AccountNumber} and Reference - {model.Reference}");
-            ViewBag.Message = $"The payment of {model.Amount} AUD has been received successfully from {model.AccountName} ";
-            return View(new PaymentInfo());
+            _logger.LogError($"ModelState is invalid. Transaction Details - Account Name: {model.AccountName}, Amount: {model.Amount} AUD,  Account Number: {model.BSBNumber}/{model.AccountNumber}, Reference: {model.Reference}");
+            ViewBag.Message = $"The trasaction initiated by {model.AccountName} has ended in errors.";
+            return View(model);
+
         }
     }
 }
